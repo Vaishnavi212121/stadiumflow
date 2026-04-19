@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader } from '@googlemaps/js-api-loader';
 
@@ -9,7 +9,7 @@ interface AISection {
   content: string;
 }
 
-export default function MapPage() {
+function MapContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const venue = searchParams.get('venue') || 'Wankhede Stadium';
@@ -23,7 +23,6 @@ export default function MapPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
 
-  // Load Google Maps
   useEffect(() => {
     const loader = new Loader({
       apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -43,7 +42,6 @@ export default function MapPage() {
         streetViewControl: false,
       });
 
-      // Search for venue using Places
       const request: google.maps.places.TextSearchRequest = { query: venue };
       const service = new PlacesService(map);
       service.textSearch(request, (results, status) => {
@@ -59,20 +57,17 @@ export default function MapPage() {
               title: venue,
               animation: google.maps.Animation.DROP,
             });
-
-            // Add heatmap-style crowd indicator circles
             const crowdSpots = [
-              { lat: loc.lat() + 0.001, lng: loc.lng() + 0.001, label: '🔴 High Crowd - Gate A' },
-              { lat: loc.lat() - 0.001, lng: loc.lng() + 0.002, label: '🟡 Medium Crowd - Gate B' },
-              { lat: loc.lat() + 0.002, lng: loc.lng() - 0.001, label: '🟢 Low Crowd - Gate C' },
+              { lat: loc.lat() + 0.001, lng: loc.lng() + 0.001, color: '#FF4444' },
+              { lat: loc.lat() - 0.001, lng: loc.lng() + 0.002, color: '#FFA500' },
+              { lat: loc.lat() + 0.002, lng: loc.lng() - 0.001, color: '#44BB44' },
             ];
-
             crowdSpots.forEach(spot => {
               new google.maps.Circle({
                 map,
                 center: { lat: spot.lat, lng: spot.lng },
                 radius: 80,
-                fillColor: spot.label.includes('High') ? '#FF4444' : spot.label.includes('Medium') ? '#FFA500' : '#44BB44',
+                fillColor: spot.color,
                 fillOpacity: 0.5,
                 strokeWeight: 0,
               });
@@ -84,7 +79,6 @@ export default function MapPage() {
     }).catch(console.error);
   }, [venue]);
 
-  // Fetch AI insights
   const fetchAI = useCallback(async (promptText: string, context?: string) => {
     setLoading(true);
     try {
@@ -106,12 +100,9 @@ export default function MapPage() {
     const prompt = origin
       ? `Give me complete stadium guide for ${venue}. I am travelling from ${origin}. Include: crowd status, best entry gates, queue wait times, travel advice from ${origin}, parking tips, and must-know fan tips.`
       : `Give me a complete stadium guide for ${venue}. Include: crowd density status, recommended entry gates, food & beverage queue times, restroom availability, parking zones, and top fan tips.`;
-
     fetchAI(prompt).then(response => {
       setAiResponse(response);
-      // Parse sections from the response
-      const parsed = parseAISections(response);
-      setSections(parsed);
+      setSections(parseAISections(response));
     });
   }, [venue, origin, fetchAI]);
 
@@ -128,7 +119,7 @@ export default function MapPage() {
       } else if (current) {
         current.content += line + '\n';
       } else if (line.trim()) {
-        current = { title: '📋 Overview', content: line + '\n' };
+        current = { title: 'Overview', content: line + '\n' };
       }
     }
     if (current) result.push(current);
@@ -141,7 +132,7 @@ export default function MapPage() {
     const userMsg = chatInput;
     setChatInput('');
     setChatHistory(h => [...h, { role: 'user', text: userMsg }]);
-    const context = `Venue: ${venue}. ${origin ? `User is from ${origin}.` : ''} Previous context: ${aiResponse.slice(0, 300)}`;
+    const context = `Venue: ${venue}. ${origin ? `User is from ${origin}.` : ''} Previous: ${aiResponse.slice(0, 300)}`;
     const response = await fetchAI(userMsg, context);
     setChatHistory(h => [...h, { role: 'ai', text: response }]);
   }
@@ -161,7 +152,6 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center gap-4">
         <button onClick={() => router.push('/')} className="text-gray-400 hover:text-white text-sm">← Back</button>
         <div>
@@ -169,9 +159,7 @@ export default function MapPage() {
           {origin && <p className="text-sm text-blue-400">Travelling from {origin}</p>}
         </div>
       </header>
-
       <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
-        {/* Map */}
         <div className="lg:w-1/2 h-64 lg:h-auto relative">
           <div ref={mapRef} className="w-full h-full" />
           {!mapLoaded && (
@@ -179,17 +167,13 @@ export default function MapPage() {
               <p className="text-gray-400 animate-pulse">Loading map…</p>
             </div>
           )}
-          {/* Legend */}
           <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 rounded-lg p-3 text-xs space-y-1">
             <p>🔴 High crowd zone</p>
             <p>🟡 Medium crowd zone</p>
             <p>🟢 Low crowd zone</p>
           </div>
         </div>
-
-        {/* AI Panel */}
         <div className="lg:w-1/2 flex flex-col overflow-hidden">
-          {/* AI Insights */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <h2 className="text-lg font-bold text-blue-400">🤖 AI Venue Insights</h2>
             {loading && sections.length === 0 ? (
@@ -214,8 +198,6 @@ export default function MapPage() {
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{aiResponse}</p>
               </div>
             )}
-
-            {/* Chat history */}
             {chatHistory.length > 0 && (
               <div className="border-t border-gray-700 pt-3 space-y-2">
                 <h3 className="text-sm font-semibold text-gray-400">Chat</h3>
@@ -228,8 +210,6 @@ export default function MapPage() {
               </div>
             )}
           </div>
-
-          {/* Chat input */}
           <form onSubmit={handleChat} className="p-4 border-t border-gray-700 flex gap-2">
             <input
               type="text"
@@ -238,16 +218,25 @@ export default function MapPage() {
               placeholder="Ask anything about this venue…"
               className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-bold"
-            >
+            <button type="submit" disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-bold">
               Ask
             </button>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <p className="text-gray-400 animate-pulse text-xl">Loading venue…</p>
+      </div>
+    }>
+      <MapContent />
+    </Suspense>
   );
 }
