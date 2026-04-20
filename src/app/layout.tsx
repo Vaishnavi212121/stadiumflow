@@ -7,14 +7,11 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'StadiumFlow | AI Smart Venue Navigator',
-  description: 'Real-time stadium intelligence powered by Google Gemini. AI-powered stadium navigation for crowd density, queue times, and travel advice.',
-  keywords: ['stadium', 'navigation', 'AI', 'crowd density', 'sports venue', 'Google Maps', 'Gemini AI'],
-  authors: [{ name: 'StadiumFlow Team' }],
-  robots: 'index, follow',
+  title: "StadiumFlow | AI Smart Venue Navigator",
+  description: "Real-time stadium logistics and crowd safety powered by Google Gemini 1.5 Flash.",
   openGraph: {
     title: 'StadiumFlow | AI Smart Venue Navigator',
-    description: 'Real-time stadium intelligence powered by Google Gemini.',
+    description: 'Real-time stadium logistics and crowd safety powered by Google Gemini 1.5 Flash.',
     type: 'website',
   },
 };

@@ -42,15 +42,18 @@ export default function Home() {
 
   return (
     <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex flex-col">
-      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-white">
-        <header role="banner" className="text-center mb-10">
-          <img
-            src="/favicon.ico"
-            alt="StadiumFlow official logo - a stylized stadium icon representing smart venue intelligence and fan safety"
-            className="w-12 h-12 mx-auto mb-4"
-            width={48}
-            height={48}
-          />
+      <nav aria-label="Main Navigation" className="w-full text-center py-6">
+        <img
+          src="/favicon.ico"
+          alt="StadiumFlow official logo - a stylized stadium icon representing smart venue intelligence and fan safety"
+          className="w-12 h-12 mx-auto mb-4"
+          width={48}
+          height={48}
+        />
+      </nav>
+
+      <section id="hero" className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-white w-full">
+        <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
             StadiumFlow
           </h1>
@@ -58,9 +61,9 @@ export default function Home() {
             AI-powered stadium navigation — crowd density, queue times &amp; travel advice.
           </p>
           <p className="text-sm text-blue-200 mt-2">
-            Powered by <span className="font-semibold">Google Gemini AI</span> &amp; <span className="font-semibold">Google Maps</span>
+            Powered by <span className="font-semibold">Google Gemini 1.5 Flash</span> &amp; <span className="font-semibold">Google Maps</span>
           </p>
-        </header>
+        </div>
 
         <section aria-labelledby="search-heading" className="w-full max-w-md">
           <h2 id="search-heading" className="sr-only">Search for a Stadium</h2>
@@ -180,7 +183,7 @@ export default function Home() {
             </article>
           ))}
         </section>
-      </div>
+      </section>
 
       <footer role="contentinfo" className="text-center py-4 text-blue-200 text-xs">
         <p>StadiumFlow — Built with Google Gemini AI, Google Maps &amp; Firebase</p>
