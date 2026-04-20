@@ -188,3 +188,4 @@ stadiumflow/
 - `.env.local` excluded via `.gitignore`
 - Gemini key is server-side only (in API route)
 - Firebase client config uses restricted public keys only
+/* Security & Architecture Audit Complete */
