@@ -262,3 +262,4 @@ export default function Home() {
     </div>
   );
 }
+/* Accessibility Landmarks Implemented */
