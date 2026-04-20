@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader } from '@googlemaps/js-api-loader';
 import { logVenueSearch } from '@/lib/analytics';
+import { KNOWN_VENUES, getVenueInfo } from '@/lib/venues';
 
 interface AISection {
   title: string;
@@ -56,10 +57,21 @@ function MapContent() {
     setTimeout(() => setAnnouncement(msg), 50);
   }, []);
 
+  const [apiKey, setApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setApiKey(data.googleMapsApiKey || ''))
+      .catch(() => setApiKey(''));
+  }, []);
+
   // Load Google Maps
   useEffect(() => {
+    if (apiKey === null) return;
+
     const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+      apiKey: apiKey,
       version: 'weekly',
       libraries: ['places'],
     });
@@ -70,15 +82,26 @@ function MapContent() {
         const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary;
         const { PlacesService } = await google.maps.importLibrary('places') as google.maps.PlacesLibrary;
 
+        const venueInfo = getVenueInfo(venue);
+        const initialCenter = venueInfo ? { lat: venueInfo.lat, lng: venueInfo.lng } : { lat: 20.5937, lng: 78.9629 };
+        const initialZoom = venueInfo ? 16 : 5;
+
         const map = new Map(mapRef.current, {
-          center: { lat: 20.5937, lng: 78.9629 },
-          zoom: 5,
+          center: initialCenter,
+          zoom: initialZoom,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
           zoomControl: true,
           gestureHandling: 'cooperative',
         });
+
+        if (venueInfo) {
+          const loc = new google.maps.LatLng(venueInfo.lat, venueInfo.lng);
+          placeVenueMarker(map, loc, venue);
+          setMapLoaded(true);
+          return;
+        }
 
         const service = new PlacesService(map);
         service.textSearch({ query: venue }, (results, status) => {
@@ -87,42 +110,7 @@ function MapContent() {
             if (loc) {
               map.setCenter(loc);
               map.setZoom(16);
-
-              // Main venue marker
-              const marker = new google.maps.Marker({
-                map,
-                position: loc,
-                title: venue,
-                animation: google.maps.Animation.DROP,
-              });
-
-              // Info window for accessibility
-              const infoWindow = new google.maps.InfoWindow({
-                content: `<div role="tooltip"><strong>${venue}</strong><br/><small>Sports venue</small></div>`,
-              });
-              marker.addListener('click', () => infoWindow.open(map, marker));
-
-              // Crowd density circles
-              const crowdZones = [
-                { offset: { lat: 0.001, lng: 0.001 }, color: '#EF4444', label: 'Gate A – High Crowd' },
-                { offset: { lat: -0.001, lng: 0.002 }, color: '#F97316', label: 'Gate B – Medium Crowd' },
-                { offset: { lat: 0.002, lng: -0.001 }, color: '#22C55E', label: 'Gate C – Low Crowd' },
-              ];
-
-              crowdZones.forEach(zone => {
-                new google.maps.Circle({
-                  map,
-                  center: { lat: loc.lat() + zone.offset.lat, lng: loc.lng() + zone.offset.lng },
-                  radius: 80,
-                  fillColor: zone.color,
-                  fillOpacity: 0.5,
-                  strokeColor: zone.color,
-                  strokeOpacity: 0.8,
-                  strokeWeight: 1,
-                });
-              });
-
-              announce(`Map loaded for ${venue}`);
+              placeVenueMarker(map, loc, venue);
             }
           }
           setMapLoaded(true);
@@ -135,7 +123,42 @@ function MapContent() {
       setMapError(true);
       setMapLoaded(true);
     });
-  }, [venue, announce]);
+
+    function placeVenueMarker(map: google.maps.Map, loc: google.maps.LatLng, name: string) {
+      const marker = new google.maps.Marker({
+        map,
+        position: loc,
+        title: name,
+        animation: google.maps.Animation.DROP,
+      });
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: `<div role="tooltip"><strong>${name}</strong><br/><small>Sports venue</small></div>`,
+      });
+      marker.addListener('click', () => infoWindow.open(map, marker));
+
+      const crowdZones = [
+        { offset: { lat: 0.001, lng: 0.001 }, color: '#EF4444', label: 'Gate A – High Crowd' },
+        { offset: { lat: -0.001, lng: 0.002 }, color: '#F97316', label: 'Gate B – Medium Crowd' },
+        { offset: { lat: 0.002, lng: -0.001 }, color: '#22C55E', label: 'Gate C – Low Crowd' },
+      ];
+
+      crowdZones.forEach(zone => {
+        new google.maps.Circle({
+          map,
+          center: { lat: loc.lat() + zone.offset.lat, lng: loc.lng() + zone.offset.lng },
+          radius: 80,
+          fillColor: zone.color,
+          fillOpacity: 0.5,
+          strokeColor: zone.color,
+          strokeOpacity: 0.8,
+          strokeWeight: 1,
+        });
+      });
+
+      announce(`Map loaded for ${name}`);
+    }
+  }, [venue, announce, apiKey]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -231,10 +254,7 @@ function MapContent() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {/* Skip link target */}
       <div id="map-content" tabIndex={-1} />
-
-      {/* Header */}
       <header role="banner" className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => router.push('/')}
@@ -257,15 +277,8 @@ function MapContent() {
           Powered by Gemini AI
         </div>
       </header>
-
-      {/* Main content */}
       <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
-
-        {/* Map section */}
-        <section
-          aria-label={`Interactive map of ${venue}`}
-          className="lg:w-1/2 h-64 lg:h-auto relative"
-        >
+        <section aria-label={`Interactive map of ${venue}`} className="lg:w-1/2 h-64 lg:h-auto relative">
           <div
             ref={mapRef}
             className="w-full h-full"
@@ -273,32 +286,19 @@ function MapContent() {
             aria-label={`Google Maps showing ${venue} with crowd density zones`}
             tabIndex={0}
           />
-
           {!mapLoaded && (
-            <div
-              className="absolute inset-0 bg-gray-800 flex items-center justify-center"
-              aria-hidden="true"
-            >
+            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center" aria-hidden="true">
               <p className="text-gray-400 animate-pulse">Loading map…</p>
             </div>
           )}
-
           {mapError && (
-            <div
-              className="absolute inset-0 bg-gray-800 flex items-center justify-center"
-              role="alert"
-            >
+            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center" role="alert">
               <p className="text-gray-400 text-sm text-center px-4">
                 Map unavailable — please check your Maps API key.
               </p>
             </div>
           )}
-
-          {/* Map legend */}
-          <aside
-            className="absolute bottom-4 left-4 bg-black bg-opacity-80 rounded-xl p-3 text-xs space-y-1.5"
-            aria-label="Crowd density legend"
-          >
+          <aside className="absolute bottom-4 left-4 bg-black bg-opacity-80 rounded-xl p-3 text-xs space-y-1.5" aria-label="Crowd density legend">
             <p className="font-semibold text-gray-300 mb-1">Crowd Zones</p>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500 inline-block flex-shrink-0" aria-hidden="true" />
@@ -314,24 +314,12 @@ function MapContent() {
             </div>
           </aside>
         </section>
-
-        {/* AI insights panel */}
-        <section
-          className="lg:w-1/2 flex flex-col overflow-hidden"
-          aria-label="AI venue insights and chat"
-        >
-          {/* AI Cards */}
-          <div
-            className="flex-1 overflow-y-auto p-4 space-y-3"
-            role="feed"
-            aria-label="AI generated venue insights"
-            aria-busy={loading}
-          >
+        <section className="lg:w-1/2 flex flex-col overflow-hidden" aria-label="AI venue insights and chat">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" role="feed" aria-label="AI generated venue insights" aria-busy={loading}>
             <h2 className="text-lg font-bold text-blue-400">
               🤖 AI Venue Insights
               {loading && <span className="sr-only">Loading insights…</span>}
             </h2>
-
             {loading && sections.length === 0 ? (
               <div role="status" aria-label="Loading venue insights" className="space-y-3">
                 {[1, 2, 3].map(i => (
@@ -344,11 +332,7 @@ function MapContent() {
               </div>
             ) : sections.length > 0 ? (
               sections.map((s, i) => (
-                <article
-                  key={i}
-                  className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-colors"
-                  aria-label={s.title}
-                >
+                <article key={i} className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-colors" aria-label={s.title}>
                   <h3 className="font-semibold text-yellow-400 mb-2 flex items-center gap-2">
                     <span aria-hidden="true">{getSectionIcon(s.title)}</span>
                     {s.title}
@@ -363,8 +347,6 @@ function MapContent() {
                 <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{aiResponse}</p>
               </article>
             ) : null}
-
-            {/* Chat history */}
             {chatHistory.length > 0 && (
               <div role="log" aria-label="Chat conversation" aria-live="polite" className="space-y-3 border-t border-gray-700 pt-3">
                 <h3 className="text-sm font-semibold text-gray-400">💬 Chat</h3>
@@ -386,11 +368,7 @@ function MapContent() {
                   </div>
                 ))}
                 {chatLoading && (
-                  <div
-                    className="bg-gray-800 border border-gray-700 mr-8 p-3 rounded-xl"
-                    role="status"
-                    aria-label="AI is thinking"
-                  >
+                  <div className="bg-gray-800 border border-gray-700 mr-8 p-3 rounded-xl" role="status" aria-label="AI is thinking">
                     <span className="text-xs text-gray-400 block mb-1">🤖 StadiumFlow AI</span>
                     <div className="flex gap-1 items-center">
                       <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} aria-hidden="true" />
@@ -404,17 +382,9 @@ function MapContent() {
               </div>
             )}
           </div>
-
-          {/* Chat input form */}
           <div className="p-4 border-t border-gray-700 bg-gray-850">
-            <form
-              onSubmit={handleChat}
-              className="flex gap-2"
-              aria-label="Ask a question about this venue"
-            >
-              <label htmlFor="chat-input" className="sr-only">
-                Ask a question about {venue}
-              </label>
+            <form onSubmit={handleChat} className="flex gap-2" aria-label="Ask a question about this venue">
+              <label htmlFor="chat-input" className="sr-only">Ask a question about {venue}</label>
               <input
                 ref={chatInputRef}
                 id="chat-input"
@@ -439,14 +409,7 @@ function MapContent() {
           </div>
         </section>
       </div>
-
-      {/* Screen reader announcements */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
     </div>
