@@ -187,60 +187,63 @@ const functionMap: Record<string, Function> = {
 };
 
 export async function getAIResponse(prompt: string, context: string = ''): Promise<string> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    systemInstruction: "You are StadiumFlow AI, a specialist in stadium logistics and fan safety.",
-    safetySettings: [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    ],
-    tools: tools as any,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      topK: 40,
-      maxOutputTokens: 1024,
-    },
-  });
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are StadiumFlow AI, a specialist in stadium logistics and fan safety.",
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT" as any, threshold: "BLOCK_MEDIUM_AND_ABOVE" as any },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT" as any, threshold: "BLOCK_ONLY_HIGH" as any },
+      ],
+      tools: tools as any,
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 1024,
+      },
+    });
 
-  const fullPrompt = context
-    ? `Current venue context:\n${context}\n\nUser question: ${prompt}`
-    : prompt;
+    const fullPrompt = context
+      ? `Current venue context:\n${context}\n\nUser question: ${prompt}`
+      : prompt;
 
-  // Start chat for function calling support
-  const chat = model.startChat();
-  let result = await chat.sendMessage(fullPrompt);
-  let response = result.response;
+    const chat = model.startChat();
+    let result = await chat.sendMessage(fullPrompt);
+    let response = result.response;
 
-  // Handle function calls (tool use loop)
-  let maxIterations = 3;
-  while (response.functionCalls() && response.functionCalls()!.length > 0 && maxIterations > 0) {
-    const functionCalls = response.functionCalls()!;
-    const functionResponses = [];
+    let maxIterations = 3;
+    while (response.functionCalls() && response.functionCalls()!.length > 0 && maxIterations > 0) {
+      const functionCalls = response.functionCalls()!;
+      const functionResponses = [];
 
-    for (const call of functionCalls) {
-      const fn = functionMap[call.name];
-      if (fn) {
-        const args = call.args as Record<string, string>;
-        const fnResult = fn(args.venueName || '', args.origin || '');
-        functionResponses.push({
-          functionResponse: {
-            name: call.name,
-            response: { result: fnResult },
-          },
-        });
+      for (const call of functionCalls) {
+        const fn = functionMap[call.name];
+        if (fn) {
+          const args = call.args as Record<string, string>;
+          const fnResult = fn(args.venueName || '', args.origin || '');
+          functionResponses.push({
+            functionResponse: {
+              name: call.name,
+              response: { result: fnResult },
+            },
+          });
+        }
       }
+
+      if (functionResponses.length > 0) {
+        result = await chat.sendMessage(functionResponses);
+        response = result.response;
+      } else {
+        break;
+      }
+      maxIterations--;
     }
 
-    if (functionResponses.length > 0) {
-      result = await chat.sendMessage(functionResponses);
-      response = result.response;
-    } else {
-      break;
-    }
-    maxIterations--;
+    return response.text();
+  } catch (error) {
+    console.error('Gemini AI Error:', error);
+    return "The stadium assistant is temporarily experiencing high traffic. Please try asking again in a moment.";
   }
-
-  return response.text();
 }
 // Safety Persona: StadiumFlow AI
