@@ -41,15 +41,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex flex-col" role="document">
-
+    <main id="main-content" className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-white">
-
         <header role="banner" className="text-center mb-10">
-          {/* Logo image with descriptive alt tag */}
           <img
             src="/favicon.ico"
-            alt="StadiumFlow logo — a stadium icon representing smart venue navigation"
+            alt="StadiumFlow official logo - a stylized stadium icon representing smart venue intelligence and fan safety"
             className="w-12 h-12 mx-auto mb-4"
             width={48}
             height={48}
@@ -144,7 +141,6 @@ export default function Home() {
           </form>
         </section>
 
-        {/* Quick venue shortcuts with descriptive alt/aria */}
         <nav aria-label="Quick venue selection — popular stadiums" className="mt-8 w-full max-w-md">
           <p className="text-sm text-blue-200 text-center mb-3 font-medium" id="quick-select-label">
             Or pick a popular venue:
@@ -156,7 +152,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setVenue(value)}
                   className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white border border-white border-opacity-30 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  aria-label={`Select ${label} stadium in ${city} — ${img}`}
+                  aria-label={`Select ${label} stadium in ${city}. Description: ${img}`}
                   aria-pressed={venue === value}
                 >
                   {label}
@@ -166,7 +162,6 @@ export default function Home() {
           </ul>
         </nav>
 
-        {/* Feature cards */}
         <section aria-label="Key features of StadiumFlow" className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl">
           {[
             { icon: '👥', title: 'Crowd Density', desc: 'Live crowd zones per gate' },
@@ -190,6 +185,6 @@ export default function Home() {
       <footer role="contentinfo" className="text-center py-4 text-blue-200 text-xs">
         <p>StadiumFlow — Built with Google Gemini AI, Google Maps &amp; Firebase</p>
       </footer>
-    </div>
+    </main>
   );
 }
