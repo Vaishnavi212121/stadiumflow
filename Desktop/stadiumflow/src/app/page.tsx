@@ -143,7 +143,7 @@ export default function Home() {
                   ref={venueInputRef}
                   type="text"
                   placeholder="Where are you heading? (e.g., Old Trafford)"
-                  aria-label="Search for a stadium or venue"
+                  aria-label="Search stadium"
                   value={venue}
                   onChange={(e) => { setVenue(e.target.value); setError(''); }}
                   className="w-full bg-white/5 border border-white/10 text-white px-12 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-gray-500 text-lg"
@@ -183,7 +183,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                aria-label="Start stadium analysis"
+                aria-label="Get AI Insights"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 Launch Intelligence <ChevronRight size={20} />

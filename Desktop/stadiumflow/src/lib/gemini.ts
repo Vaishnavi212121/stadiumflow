@@ -188,9 +188,12 @@ const functionMap: Record<string, Function> = {
 
 export async function getAIResponse(prompt: string, context: string = ''): Promise<string> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: SYSTEM_INSTRUCTION,
-    safetySettings,
+    model: "gemini-1.5-flash",
+    systemInstruction: "You are StadiumFlow AI, a specialist in stadium logistics and fan safety.",
+    safetySettings: [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    ],
     tools: tools as any,
     generationConfig: {
       temperature: 0.7,
