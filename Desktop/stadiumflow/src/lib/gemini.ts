@@ -240,3 +240,4 @@ export async function getAIResponse(prompt: string, context: string = ''): Promi
 
   return response.text();
 }
+// Safety Persona: StadiumFlow AI
