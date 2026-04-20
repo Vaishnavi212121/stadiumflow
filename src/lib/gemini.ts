@@ -8,41 +8,32 @@ export async function getAIResponse(prompt: string, context: string = ''): Promi
       return "Error: GEMINI_API_KEY is not configured.";
     }
 
-    // Using gemini-1.5-flash which is the current standard
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
     });
 
     const systemInstruction = "You are StadiumFlow AI, an expert in stadium logistics and fan safety. Provide advice on crowd density, gates, and travel.";
-
-    // Incorporate system instruction directly into the prompt for better compatibility with older API versions
     const fullPrompt = `System: ${systemInstruction}\n\n${context ? `Context: ${context}\n\n` : ''}User Question: ${prompt}`;
 
     const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const text = response.text();
 
-    if (!text) {
-      return "The AI returned an empty response. Please try a different question.";
-    }
-
-    return text;
+    return text || "The AI returned an empty response.";
   } catch (error) {
     console.error('Gemini AI Error:', error);
     const msg = error instanceof Error ? error.message : String(error);
     
-    // If 1.5-flash fails with 404, try falling back to gemini-pro
-    if (msg.includes('404') || msg.includes('not found')) {
+    // Fallback to gemini-pro if 1.5-flash is still settling
+    if (msg.includes('404')) {
       try {
         const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
         const result = await fallbackModel.generateContent(prompt);
         const response = await result.response;
         return response.text();
-      } catch (fallbackError) {
-        return `AI Model Error (404): The requested model was not found in your API region. Please ensure "Generative Language API" is enabled in your Google Cloud Console for project ${process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client'}.`;
-      }
+      } catch (e) {}
     }
     
-    return `AI Service Error: ${msg}. Please check your API key and quota.`;
+    return `AI Service Error: ${msg}. If this persists, ensure the 'Generative Language API' is fully propagated in your Google Cloud Console.`;
   }
 }
