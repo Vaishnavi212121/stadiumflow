@@ -164,11 +164,44 @@ function MapContent() {
             });
           });
         };
+        
+        // Directions Service
+        const directionsService = new google.maps.DirectionsService();
+        const directionsRenderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: true, // We have our own marker
+          polylineOptions: {
+            strokeColor: '#3B82F6',
+            strokeWeight: 5,
+            strokeOpacity: 0.8,
+          }
+        });
+
+        const calculateRoute = (start: string, end: { lat: number, lng: number }) => {
+          directionsService.route(
+            {
+              origin: start,
+              destination: end,
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+              if (status === google.maps.DirectionsStatus.OK && result) {
+                directionsRenderer.setDirections(result);
+                // If it's a long distance, zoom out a bit to show both
+                const bounds = result.routes[0].bounds;
+                map.fitBounds(bounds);
+              }
+            }
+          );
+        };
 
         // 1. Try hardcoded venue lookup first (instant, no API needed)
         const knownVenue = lookupVenue(venue);
         if (knownVenue) {
           placeMarkerAndZones(knownVenue.lat, knownVenue.lng, knownVenue.zoom || 17);
+          if (origin) {
+            calculateRoute(origin, { lat: knownVenue.lat, lng: knownVenue.lng });
+          }
           setMapLoaded(true);
           return;
         }
@@ -181,7 +214,11 @@ function MapContent() {
             if (status === google.maps.places.PlacesServiceStatus.OK && results?.[0]) {
               const loc = results[0].geometry?.location;
               if (loc) {
-                placeMarkerAndZones(loc.lat(), loc.lng(), 17);
+                const pos = { lat: loc.lat(), lng: loc.lng() };
+                placeMarkerAndZones(pos.lat, pos.lng, 17);
+                if (origin) {
+                  calculateRoute(origin, pos);
+                }
               }
             }
             setMapLoaded(true);
