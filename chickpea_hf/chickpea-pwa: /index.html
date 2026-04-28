@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a7a4a">
+<meta name="description" content="Chickpea Disease Detector for Indian Farmers">
+<link rel="manifest" href="manifest.json">
+<title>KisanScan — Chickpea Doctor</title>
+<style>
+:root {
+  --green-dark:  #0f5132;
+  --green-main:  #1a7a4a;
+  --green-light: #d1e7dd;
+  --amber:       #f59e0b;
+  --red:         #dc2626;
+  --gray-bg:     #f8f9fa;
+  --white:       #ffffff;
+  --text:        #1a1a1a;
+  --text-muted:  #6b7280;
+  --radius:      16px;
+  --shadow:      0 4px 24px rgba(0,0,0,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-bg); color: var(--text); min-height: 100vh; }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-main));
+  color: white; padding: 1.2rem 1rem 1.5rem;
+  text-align: center; position: relative;
+}
+.header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+.header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 0.2rem; }
+
+/* Language Selector */
+.lang-bar {
+  background: rgba(255,255,255,0.15);
+  padding: 0.5rem; border-radius: 12px;
+  margin: 0.8rem auto 0; max-width: 360px;
+  display: flex; flex-wrap: wrap; gap: 0.3rem;
+  justify-content: center;
+}
+.lang-btn {
+  background: rgba(255,255,255,0.2); color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 0.25rem 0.65rem; border-radius: 20px;
+  font-size: 0.78rem; cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-btn.active { background: white; color: var(--green-dark); font-weight: 600; }
+
+/* Main container */
+.container { max-width: 480px; margin: 0 auto; padding: 1rem; }
+
+/* Upload Card */
+.card {
+  background: white; border-radius: var(--radius);
+  padding: 1.5rem; box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+}
+
+.drop-zone {
+  border: 2.5px dashed var(--green-main);
+  border-radius: 12px; padding: 2rem 1rem;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s; background: #f0fff4;
+  position: relative;
+}
+.drop-zone:active { transform: scale(0.98); }
+.drop-zone .leaf-icon { font-size: 3.5rem; display: block; margin-bottom: 0.5rem; }
+.drop-zone p { color: var(--text-muted); font-size: 0.9rem; }
+.drop-zone strong { color: var(--green-main); }
+
+#preview-wrap { display: none; margin: 1rem 0; text-align: center; }
+#preview {
+  max-width: 100%; max-height: 220px;
+  border-radius: 12px; object-fit: cover;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
+.preview-change {
+  margin-top: 0.5rem; font-size: 0.8rem;
+  color: var(--green-main); cursor: pointer;
+  text-decoration: underline;
+}
+
+.detect-btn {
+  width: 100%; padding: 1rem;
+  background: var(--green-main); color: white;
+  border: none; border-radius: 12px;
+  font-size: 1.05rem; font-weight: 600;
+  cursor: pointer; margin-top: 0.8rem;
+  transition: all 0.2s; display: flex;
+  align-items: center; justify-content: center; gap: 0.5rem;
+}
+.detect-btn:active { transform: scale(0.98); }
+.detect-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+/* Loader */
+.loader-wrap { text-align: center; padding: 2rem; display: none; }
+.loader {
+  width: 48px; height: 48px;
+  border: 5px solid var(--green-light);
+  border-top-color: var(--green-main);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-wrap p { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Result Card */
+.result-card { display: none; }
+
+.disease-header {
+  display: flex; align-items: center; gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.disease-icon { font-size: 2.5rem; }
+.disease-name {
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--green-dark);
+}
+.disease-name.warning { color: #92400e; }
+.disease-name.danger  { color: var(--red); }
+.confidence-text { font-size: 0.85rem; color: var(--text-muted); }
+
+/* Prob bars */
+.prob-section { margin: 1rem 0; }
+.prob-row {
+  display: flex; align-items: center;
+  gap: 0.6rem; margin-bottom: 0.5rem;
+}
+.prob-label { font-size: 0.82rem; width: 140px; color: var(--text); flex-shrink: 0; }
+.prob-bar-bg {
+  flex: 1; height: 8px; background: #e5e7eb;
+  border-radius: 4px; overflow: hidden;
+}
+.prob-bar {
+  height: 100%; background: var(--green-main);
+  border-radius: 4px; transition: width 0.8s cubic-bezier(.25,.8,.25,1);
+}
+.prob-val { font-size: 0.8rem; color: var(--text-muted); width: 38px; text-align: right; }
+
+/* Advice */
+.advice-card {
+  background: #f0fff4; border-left: 4px solid var(--green-main);
+  border-radius: 0 12px 12px 0; padding: 1.2rem;
+  margin-top: 1rem;
+}
+.advice-title {
+  font-weight: 700; color: var(--green-dark);
+  margin-bottom: 0.7rem; font-size: 0.95rem;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.advice-text {
+  font-size: 0.88rem; line-height: 1.8;
+  color: #1f2937; white-space: pre-wrap;
+}
+
+/* Share button */
+.share-btn {
+  width: 100%; padding: 0.8rem;
+  background: white; color: var(--green-main);
+  border: 2px solid var(--green-main);
+  border-radius: 12px; font-size: 0.9rem;
+  font-weight: 600; cursor: pointer;
+  margin-top: 1rem; transition: all 0.2s;
+}
+.share-btn:active { background: var(--green-light); }
+
+/* Camera hint */
+.camera-hint {
+  text-align: center; color: var(--text-muted);
+  font-size: 0.8rem; margin-top: 0.5rem;
+}
+
+/* Install banner */
+.install-banner {
+  background: var(--green-dark); color: white;
+  padding: 0.8rem 1rem; text-align: center;
+  font-size: 0.85rem; display: none;
+  align-items: center; justify-content: space-between; gap: 1rem;
+}
+.install-btn {
+  background: var(--amber); color: white;
+  border: none; padding: 0.4rem 1rem;
+  border-radius: 20px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; font-size: 0.85rem;
+}
+
+/* Footer */
+.footer {
+  text-align: center; padding: 2rem 1rem;
+  color: var(--text-muted); font-size: 0.78rem;
+}
+</style>
+</head>
+<body>
+
+<!-- Install Banner -->
+<div class="install-banner" id="installBanner">
+  <span>📲 Install KisanScan on your phone!</span>
+  <button class="install-btn" onclick="installApp()" data-i18n="install">Install App</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <h1>🌱 KisanScan</h1>
+  <p data-i18n="subtitle">Chickpea Disease Detector for Farmers</p>
+  <div class="lang-bar" id="langBar"></div>
+</div>
+
+<div class="container">
+
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <span class="leaf-icon">🍃</span>
+      <p><strong data-i18n="upload_main">Click to upload leaf photo</strong></p>
+      <p data-i18n="upload_sub">or take a photo with camera</p>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+
+    <div id="preview-wrap">
+      <img id="preview" alt="Leaf preview">
+      <div class="preview-change" onclick="document.getElementById('fileInput').click()"
+           data-i18n="change_photo">📷 Change photo</div>
+    </div>
+
+    <p class="camera-hint" data-i18n="camera_hint">💡 Tip: Take photo in good natural light</p>
+
+    <button class="detect-btn" id="detectBtn" onclick="detect()" disabled>
+      <span>🔍</span> <span data-i18n="detect_btn">Detect Disease</span>
+    </button>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader-wrap" id="loaderWrap">
+    <div class="loader"></div>
+    <p data-i18n="analyzing">Analyzing your leaf...</p>
+  </div>
+
+  <!-- Result -->
+  <div class="card result-card" id="resultCard">
+    <div class="disease-header">
+      <span class="disease-icon" id="diseaseIcon">🌿</span>
+      <div>
+        <div class="disease-name" id="diseaseName"></div>
+        <div class="confidence-text" id="confidenceText"></div>
+      </div>
+    </div>
+
+    <div class="prob-section" id="probSection"></div>
+
+    <div class="advice-card">
+      <div class="advice-title">💊 <span data-i18n="advice_title">Treatment Advice</span></div>
+      <div class="advice-text" id="adviceText"></div>
+    </div>
+
+    <button class="share-btn" onclick="shareResult()">
+      📤 <span data-i18n="share">Share Result</span>
+    </button>
+  </div>
+
+</div>
+
+<div class="footer">
+  KisanScan v1.0 • Built for Indian Farmers<br>
+  Model accuracy: 98.87% • Trained on chickpea field data
+</div>
+
+<script>
+// ── CONFIG — replace with your Hugging Face Space URL after deploying ──
+const API_URL = 'https://YOUR-USERNAME-chickpea-detector.hf.space/predict';
+
+// ── Languages ──
+const LANGS = {
+  en: { name: 'English',  flag: '🇬🇧' },
+  hi: { name: 'हिंदी',    flag: '🇮🇳' },
+  mr: { name: 'मराठी',    flag: '🇮🇳' },
+  ta: { name: 'தமிழ்',   flag: '🇮🇳' },
+  te: { name: 'తెలుగు',  flag: '🇮🇳' },
+  kn: { name: 'ಕನ್ನಡ',   flag: '🇮🇳' },
+  bn: { name: 'বাংলা',   flag: '🇮🇳' },
+  gu: { name: 'ગુજરાતી', flag: '🇮🇳' },
+  pa: { name: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  ml: { name: 'മലയാളം', flag: '🇮🇳' },
+  ur: { name: 'اردو',    flag: '🇵🇰' },
+};
+
+const I18N = {
+  en: { subtitle:'Chickpea Disease Detector for Farmers', upload_main:'Click to upload leaf photo', upload_sub:'or take a photo with camera', camera_hint:'💡 Tip: Take photo in good natural light', detect_btn:'Detect Disease', analyzing:'Analyzing your leaf...', advice_title:'Treatment Advice', share:'Share Result', change_photo:'📷 Change photo', confidence:'Confidence', install:'Install App' },
+  hi: { subtitle:'किसानों के लिए चना रोग पहचानकर्ता', upload_main:'पत्ती की फोटो अपलोड करें', upload_sub:'या कैमरे से फोटो लें', camera_hint:'💡 सुझाव: अच्छी प्राकृतिक रोशनी में फोटो लें', detect_btn:'रोग पहचानें', analyzing:'आपकी पत्ती का विश्लेषण हो रहा है...', advice_title:'उपचार सलाह', share:'परिणाम साझा करें', change_photo:'📷 फोटो बदलें', confidence:'विश्वसनीयता', install:'ऐप इंस्टॉल करें' },
+  mr: { subtitle:'शेतकऱ्यांसाठी हरभरा रोग ओळखकर्ता', upload_main:'पानाचा फोटो अपलोड करा', upload_sub:'किंवा कॅमेऱ्याने फोटो काढा', camera_hint:'💡 सूचना: चांगल्या नैसर्गिक प्रकाशात फोटो काढा', detect_btn:'रोग ओळखा', analyzing:'तुमच्या पानाचे विश्लेषण होत आहे...', advice_title:'उपचार सल्ला', share:'परिणाम शेअर करा', change_photo:'📷 फोटो बदला', confidence:'विश्वासार्हता', install:'अॅप इंस्टॉल करा' },
+  ta: { subtitle:'விவசாயிகளுக்கான கொண்டைக்கடலை நோய் கண்டறிதல்', upload_main:'இலை புகைப்படம் பதிவேற்றவும்', upload_sub:'அல்லது கேமராவில் புகைப்படம் எடுக்கவும்', camera_hint:'💡 குறிப்பு: நல்ல இயற்கை வெளிச்சத்தில் புகைப்படம் எடுக்கவும்', detect_btn:'நோயை கண்டறி', analyzing:'உங்கள் இலையை பகுப்பாய்வு செய்கிறது...', advice_title:'சிகிச்சை ஆலோசனை', share:'முடிவை பகிர்', change_photo:'📷 புகைப்படம் மாற்று', confidence:'நம்பகத்தன்மை', install:'ஆப் நிறுவு' },
+  te: { subtitle:'రైతులకు శనగ వ్యాధి గుర్తింపు', upload_main:'ఆకు ఫోటో అప్‌లోడ్ చేయండి', upload_sub:'లేదా కెమెరాతో ఫోటో తీయండి', camera_hint:'💡 చిట్కా: మంచి సహజ వెలుతురులో ఫోటో తీయండి', detect_btn:'వ్యాధి గుర్తించు', analyzing:'మీ ఆకును విశ్లేషిస్తోంది...', advice_title:'చికిత్స సలహా', share:'ఫలితాన్ని పంచుకో', change_photo:'📷 ఫోటో మార్చు', confidence:'విశ్వసనీయత', install:'యాప్ ఇన్‌స్టాల్ చేయి' },
+  kn: { subtitle:'ರೈತರಿಗಾಗಿ ಕಡಲೆ ರೋಗ ಪತ್ತೆ', upload_main:'ಎಲೆ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ', upload_sub:'ಅಥವಾ ಕ್ಯಾಮೆರಾದಿಂದ ಫೋಟೋ ತೆಗೆಯಿರಿ', camera_hint:'💡 ಸಲಹೆ: ಉತ್ತಮ ನೈಸರ್ಗಿಕ ಬೆಳಕಿನಲ್ಲಿ ಫೋಟೋ ತೆಗೆಯಿರಿ', detect_btn:'ರೋಗ ಪತ್ತೆ ಮಾಡಿ', analyzing:'ನಿಮ್ಮ ಎಲೆಯನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...', advice_title:'ಚಿಕಿತ್ಸಾ ಸಲಹೆ', share:'ಫಲಿತಾಂಶ ಹಂಚಿಕೊಳ್ಳಿ', change_photo:'📷 ಫೋಟೋ ಬದಲಿಸಿ', confidence:'ವಿಶ್ವಾಸಾರ್ಹತೆ', install:'ಅಪ್ಲಿಕೇಶನ್ ಇನ್ಸ್ಟಾಲ್ ಮಾಡಿ' },
+  bn: { subtitle:'কৃষকদের জন্য ছোলা রোগ সনাক্তকারী', upload_main:'পাতার ছবি আপলোড করুন', upload_sub:'বা ক্যামেরা দিয়ে ছবি তুলুন', camera_hint:'💡 টিপস: ভালো প্রাকৃতিক আলোতে ছবি তুলুন', detect_btn:'রোগ সনাক্ত করুন', analyzing:'আপনার পাতা বিশ্লেষণ হচ্ছে...', advice_title:'চিকিৎসার পরামর্শ', share:'ফলাফল শেয়ার করুন', change_photo:'📷 ছবি পরিবর্তন করুন', confidence:'আস্থা', install:'অ্যাপ ইনস্টল করুন' },
+  gu: { subtitle:'ખેડૂતો માટે ચણા રોગ શોધકર્તા', upload_main:'પાનનો ફોટો અપલોડ કરો', upload_sub:'અથવા કેમેરાથી ફોટો લો', camera_hint:'💡 ટિપ: સારા કુદરતી પ્રકાશમાં ફોટો લો', detect_btn:'રોગ ઓળખો', analyzing:'તમારા પાનનું વિશ્લેષણ થઈ રહ્યું છે...', advice_title:'સારવાર સલાહ', share:'પરિણામ શેર કરો', change_photo:'📷 ફોટો બદલો', confidence:'વિશ્વસનીયતા', install:'એપ ઇન્સ્ટોલ કરો' },
+  pa: { subtitle:'ਕਿਸਾਨਾਂ ਲਈ ਛੋਲਿਆਂ ਦੀ ਬਿਮਾਰੀ ਖੋਜਕਰਤਾ', upload_main:'ਪੱਤੇ ਦੀ ਫੋਟੋ ਅਪਲੋਡ ਕਰੋ', upload_sub:'ਜਾਂ ਕੈਮਰੇ ਨਾਲ ਫੋਟੋ ਲਓ', camera_hint:'💡 ਸੁਝਾਅ: ਚੰਗੀ ਕੁਦਰਤੀ ਰੋਸ਼ਨੀ ਵਿੱਚ ਫੋਟੋ ਲਓ', detect_btn:'ਬਿਮਾਰੀ ਪਛਾਣੋ', analyzing:'ਤੁਹਾਡੇ ਪੱਤੇ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ...', advice_title:'ਇਲਾਜ ਦੀ ਸਲਾਹ', share:'ਨਤੀਜਾ ਸਾਂਝਾ ਕਰੋ', change_photo:'📷 ਫੋਟੋ ਬਦਲੋ', confidence:'ਭਰੋਸੇਯੋਗਤਾ', install:'ਐਪ ਇੰਸਟਾਲ ਕਰੋ' },
+  ml: { subtitle:'കർഷകർക്കായി കടല രോഗ നിർണ്ണായകൻ', upload_main:'ഇലയുടെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക', upload_sub:'അല്ലെങ്കിൽ ക്യാമറ ഉപയോഗിച്ച് ഫോട്ടോ എടുക്കുക', camera_hint:'💡 നുറുങ്ങ്: നല്ല പ്രകൃതി വെളിച്ചത്തിൽ ഫോട്ടോ എടുക്കുക', detect_btn:'രോഗം കണ്ടെത്തുക', analyzing:'നിങ്ങളുടെ ഇല വിശകലനം ചെയ്യുന്നു...', advice_title:'ചികിത്സാ ഉപദേശം', share:'ഫലം പങ്കിടുക', change_photo:'📷 ഫോട്ടോ മാറ്റുക', confidence:'ആത്മവിശ്വാസം', install:'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക' },
+  ur: { subtitle:'کسانوں کے لیے چنے کی بیماری کا شناخت کار', upload_main:'پتے کی تصویر اپ لوڈ کریں', upload_sub:'یا کیمرے سے تصویر لیں', camera_hint:'💡 مشورہ: اچھی قدرتی روشنی میں تصویر لیں', detect_btn:'بیماری شناخت کریں', analyzing:'آپ کے پتے کا تجزیہ ہو رہا ہے...', advice_title:'علاج کا مشورہ', share:'نتیجہ شیئر کریں', change_photo:'📷 تصویر تبدیل کریں', confidence:'اعتماد', install:'ایپ انسٹال کریں' },
+};
+
+const DISEASE_ICONS = { healthy:'🌿', 'Leaf Rust':'🟠', 'Fungal Infection':'🟡', 'Leaf Spot':'🔴' };
+
+let currentLang = 'en';
+let lastResult  = null;
+let deferredPrompt = null;
+
+// ── Build language bar ──
+function buildLangBar() {
+  const bar = document.getElementById('langBar');
+  bar.innerHTML = '';
+  Object.entries(LANGS).forEach(([code, info]) => {
+    const btn = document.createElement('button');
+    btn.className = 'lang-btn' + (code === currentLang ? ' active' : '');
+    btn.textContent = info.name;
+    btn.onclick = () => setLang(code);
+    bar.appendChild(btn);
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  buildLangBar();
+  applyTranslations();
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+  if (lastResult) showResult(lastResult);
+}
+
+function applyTranslations() {
+  const t = I18N[currentLang] || I18N.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) el.textContent = t[key];
+  });
+}
+
+// ── File handling ──
+document.getElementById('fileInput').addEventListener('change', function() {
+  if (!this.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('preview').src = e.target.result;
+    document.getElementById('preview-wrap').style.display = 'block';
+    document.getElementById('detectBtn').disabled = false;
+    document.getElementById('resultCard').style.display = 'none';
+  };
+  reader.readAsDataURL(this.files[0]);
+});
+
+// Drag and drop
+const dropZone = document.getElementById('dropZone');
+['dragover','dragenter'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.style.background='#dcfce7'; }));
+['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { dropZone.style.background='#f0fff4'; }));
+dropZone.addEventListener('drop', ev => {
+  ev.preventDefault();
+  const file = ev.dataTransfer.files[0];
+  if (file?.type.startsWith('image/')) {
+    document.getElementById('fileInput').files = ev.dataTransfer.files;
+    document.getElementById('fileInput').dispatchEvent(new Event('change'));
+  }
+});
+
+// ── Detection ──
+async function detect() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) return;
+
+  document.getElementById('detectBtn').disabled = true;
+  document.getElementById('loaderWrap').style.display = 'block';
+  document.getElementById('resultCard').style.display = 'none';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res  = await fetch(`${API_URL}?lang=${currentLang}`, {
+      method: 'POST', body: formData
+    });
+
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    lastResult = data;
+    showResult(data);
+  } catch (err) {
+    alert('Could not connect to server. Please check your internet connection.');
+    console.error(err);
+  } finally {
+    document.getElementById('detectBtn').disabled = false;
+    document.getElementById('loaderWrap').style.display = 'none';
+  }
+}
+
+function showResult(data) {
+  const t = I18N[currentLang] || I18N.en;
+
+  // Disease name and icon
+  const icon = DISEASE_ICONS[data.disease] || '🌿';
+  document.getElementById('diseaseIcon').textContent = icon;
+
+  const nameEl = document.getElementById('diseaseName');
+  nameEl.textContent  = data.disease;
+  nameEl.className    = 'disease-name';
+  if (data.disease !== 'Healthy') {
+    nameEl.classList.add(data.confidence > 80 ? 'danger' : 'warning');
+  }
+
+  document.getElementById('confidenceText').textContent =
+    `${t.confidence || 'Confidence'}: ${data.confidence}%`;
+
+  // Probability bars
+  const probSection = document.getElementById('probSection');
+  probSection.innerHTML = '';
+  Object.entries(data.all_probs).forEach(([cls, pct]) => {
+    probSection.innerHTML += `
+      <div class="prob-row">
+        <span class="prob-label">${cls}</span>
+        <div class="prob-bar-bg">
+          <div class="prob-bar" style="width:${pct}%"></div>
+        </div>
+        <span class="prob-val">${pct}%</span>
+      </div>`;
+  });
+
+  document.getElementById('adviceText').textContent = data.advice;
+
+  const card = document.getElementById('resultCard');
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Share ──
+async function shareResult() {
+  if (!lastResult) return;
+  const t = I18N[currentLang] || I18N.en;
+  const text = `🌱 KisanScan Result\n\nDisease: ${lastResult.disease}\nConfidence: ${lastResult.confidence}%\n\n${lastResult.advice}\n\n— KisanScan App`;
+  if (navigator.share) {
+    await navigator.share({ title: 'KisanScan Result', text });
+  } else {
+    await navigator.clipboard.writeText(text);
+    alert('Result copied to clipboard!');
+  }
+}
+
+// ── PWA Install ──
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('installBanner').style.display = 'none';
+    });
+  }
+}
+
+// ── Service Worker (offline support) ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+
+// ── Init ──
+buildLangBar();
+applyTranslations();
+</script>
+</body>
+</html>
